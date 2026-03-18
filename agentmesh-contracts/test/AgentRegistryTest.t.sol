@@ -224,6 +224,25 @@ contract AgentRegistryTest is Test {
         assertEq(registry.getAgent(bob).reputation, 100);
     }
 
+    // --- Transfer failure ---
+    function test_releasePayment_revertsIfTransferFails() public {
+        RejectEther rejecter = new RejectEther();
+        string[] memory caps = new string[](1);
+        caps[0] = "web-scraping";
+        vm.prank(address(rejecter));
+        registry.registerAgent("reject-bot", caps, 0.01 ether, "wss://reject:8080");
+
+        hoax(alice, 1 ether);
+        registry.createTask{value: 0.01 ether}(1, address(rejecter));
+
+        vm.prank(address(rejecter));
+        registry.completeTask(1);
+
+        vm.expectRevert("Transfer failed");
+        vm.prank(alice);
+        registry.releasePayment(1, alice);
+    }
+
     // --- Full flow ---
     function test_fullEscrowFlow() public {
         string[] memory caps = new string[](1);
@@ -246,5 +265,11 @@ contract AgentRegistryTest is Test {
         assertEq(address(registry).balance, 0);
         AgentRegistry.Agent memory agent = registry.getAgent(bob);
         assertEq(agent.reputation, 55);
+    }
+}
+
+contract RejectEther {
+    receive() external payable {
+        revert();
     }
 }

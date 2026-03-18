@@ -1,0 +1,46 @@
+[workspace]
+name = "zeroclaw-agents"
+resolver = "2"
+members = [
+    "shared",
+    "scraper",
+    "analyzer",
+    "publisher",
+]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["ws"] }
+
+# WebSocket client
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+futures-util = "0.3"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Ethereum
+alloy = { version = "1.7.3", features = ["full", "signer-local"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+anyhow = "1"
+
+# Env
+dotenv = "0.15"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Hex
+hex = "0.4"
+
+# UUID for message IDs
+uuid = { version = "1", features = ["v4"] }

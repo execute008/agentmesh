@@ -1,0 +1,24 @@
+[package]
+name = "publisher"
+version = "0.1.0"
+edition = "2021"
+description = "AgentMesh publisher — receives x402 messages and prints extracted titles"
+
+[[bin]]
+name = "publisher"
+path = "src/main.rs"
+
+[dependencies]
+shared = { path = "../shared" }
+
+tokio = { workspace = true }
+axum = { workspace = true }
+alloy = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+dotenv = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+futures-util = { workspace = true }
+tokio-tungstenite = { workspace = true }

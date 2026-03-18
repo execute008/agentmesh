@@ -1,1 +1,3 @@
 .synthesis
+agentmesh-contracts/out/
+agentmesh-contracts/cache/

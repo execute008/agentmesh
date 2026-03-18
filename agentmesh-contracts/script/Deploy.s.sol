@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: MIT
+// Deploy to Sepolia:
+//   MESH_NAME=AgentMesh-Demo forge script script/Deploy.s.sol --rpc-url $RPC_URL --account deployer --broadcast
+// Verify:
+//   forge verify-contract <address> src/AgentRegistry.sol:AgentRegistry --chain sepolia --etherscan-api-key $ETHERSCAN_API_KEY
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";

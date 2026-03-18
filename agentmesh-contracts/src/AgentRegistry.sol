@@ -37,10 +37,59 @@ contract AgentRegistry is IAgentRegistry {
     // ============================================================
     //                       REGISTRY
     // ============================================================
-    function registerAgent(string calldata, string[] calldata, uint256, string calldata) external { revert("not implemented"); }
-    function getAgent(address) external view returns (Agent memory) { revert("not implemented"); }
-    function getAllAgents() external view returns (address[] memory) { revert("not implemented"); }
-    function searchByCapability(string calldata) external view returns (address[] memory) { revert("not implemented"); }
+    function registerAgent(
+        string calldata agentId,
+        string[] calldata capabilities,
+        uint256 pricePerTask,
+        string calldata wsEndpoint
+    ) external {
+        require(!_isRegistered[msg.sender], "Already registered");
+        _agents[msg.sender] = Agent({
+            agentId: agentId,
+            capabilities: capabilities,
+            pricePerTask: pricePerTask,
+            endpoint: wsEndpoint,
+            reputation: 50,
+            active: true
+        });
+        _isRegistered[msg.sender] = true;
+        _agentList.push(msg.sender);
+        emit AgentRegistered(msg.sender, agentId, capabilities);
+    }
+
+    function getAgent(address wallet) external view returns (Agent memory) {
+        require(_isRegistered[wallet], "Agent not found");
+        return _agents[wallet];
+    }
+
+    function getAllAgents() external view returns (address[] memory) {
+        return _agentList;
+    }
+
+    function searchByCapability(string calldata cap) external view returns (address[] memory) {
+        uint256 count = 0;
+        for (uint256 i = 0; i < _agentList.length; i++) {
+            Agent storage agent = _agents[_agentList[i]];
+            for (uint256 j = 0; j < agent.capabilities.length; j++) {
+                if (keccak256(bytes(agent.capabilities[j])) == keccak256(bytes(cap))) {
+                    count++;
+                    break;
+                }
+            }
+        }
+        address[] memory result = new address[](count);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < _agentList.length; i++) {
+            Agent storage agent = _agents[_agentList[i]];
+            for (uint256 j = 0; j < agent.capabilities.length; j++) {
+                if (keccak256(bytes(agent.capabilities[j])) == keccak256(bytes(cap))) {
+                    result[idx++] = _agentList[i];
+                    break;
+                }
+            }
+        }
+        return result;
+    }
 
     // ============================================================
     //                   ESCROW & SETTLEMENT

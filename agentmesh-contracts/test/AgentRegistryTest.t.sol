@@ -209,6 +209,21 @@ contract AgentRegistryTest is Test {
         registry.releasePayment(1, alice);
     }
 
+    // --- Reputation cap ---
+    function test_releasePayment_capsReputationAt100() public {
+        _registerBob();
+        for (uint256 taskId = 1; taskId <= 11; taskId++) {
+            hoax(alice, 1 ether);
+            registry.createTask{value: 0.01 ether}(taskId, bob);
+            vm.prank(bob);
+            registry.completeTask(taskId);
+            vm.prank(alice);
+            registry.releasePayment(taskId, alice);
+        }
+        // 50 + (10 * 5) = 100, 11th release should not exceed 100
+        assertEq(registry.getAgent(bob).reputation, 100);
+    }
+
     // --- Full flow ---
     function test_fullEscrowFlow() public {
         string[] memory caps = new string[](1);

@@ -3,11 +3,17 @@ pragma solidity ^0.8.20;
 
 import {IAgentRegistry} from "./interfaces/IAgentRegistry.sol";
 
+/// @title AgentRegistry
+/// @notice On-chain registry for autonomous agent discovery, task escrow, and reputation
+/// @dev Covers Registry, Escrow & Settlement, and Reputation bounded contexts in one contract.
+///      Deploy one per mesh. CLI scanner depends on MeshCreated event in constructor.
 contract AgentRegistry is IAgentRegistry {
     // ============================================================
     //                     STATE VARIABLES
     // ============================================================
+    /// @notice Human-readable name of this mesh (set at deployment)
     string public meshName;
+    /// @notice Address of the wallet that deployed this mesh
     address public meshOwner;
     mapping(address => Agent) private _agents;
     mapping(address => bool) private _isRegistered;
@@ -28,6 +34,9 @@ contract AgentRegistry is IAgentRegistry {
     // ============================================================
     //                      CONSTRUCTOR
     // ============================================================
+    /// @notice Deploy a new AgentMesh registry
+    /// @dev Emits MeshCreated. Sets deployer as meshOwner.
+    /// @param _meshName Human-readable name for this mesh (e.g. "AgentMesh-Demo")
     constructor(string memory _meshName) {
         meshName = _meshName;
         meshOwner = msg.sender;
@@ -110,6 +119,10 @@ contract AgentRegistry is IAgentRegistry {
     // ============================================================
     //                   ESCROW & SETTLEMENT
     // ============================================================
+    /// @notice Create a task with escrowed ETH payment
+    /// @dev Locks msg.value in the contract until releasePayment is called.
+    /// @param taskId Caller-supplied unique task identifier (uint256)
+    /// @param executorAddr Registered agent wallet that will execute the task
     function createTask(uint256 taskId, address executorAddr) external payable {
         require(msg.value > 0, "Must send ETH");
         require(_isRegistered[executorAddr], "Executor not registered");
@@ -124,6 +137,9 @@ contract AgentRegistry is IAgentRegistry {
         emit TaskCreated(taskId, msg.sender, executorAddr, msg.value);
     }
 
+    /// @notice Mark a task as completed by the executor
+    /// @dev Only the assigned executor can call this. Emits TaskCompleted.
+    /// @param taskId The task identifier to mark as completed
     function completeTask(uint256 taskId) external {
         Task storage task = _tasks[taskId];
         require(msg.sender == task.executor, "Only executor");
@@ -132,6 +148,11 @@ contract AgentRegistry is IAgentRegistry {
         emit TaskCompleted(taskId);
     }
 
+    /// @notice Release escrowed ETH to executor after task completion
+    /// @dev Transfers escrowAmount to executor, increments reputation by 5 (capped at 100).
+    ///      requester must equal msg.sender — prevents unauthorized release.
+    /// @param taskId The task identifier to release payment for
+    /// @param requester Must equal msg.sender (the original task requester)
     function releasePayment(uint256 taskId, address requester) external {
         require(requester == msg.sender, "Only requester");
         Task storage task = _tasks[taskId];

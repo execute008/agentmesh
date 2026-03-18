@@ -1,0 +1,40 @@
+[package]
+name = "agentmesh-cli"
+version = "0.1.0"
+edition = "2021"
+description = "AgentMesh CLI — decentralized agent coordination on Ethereum"
+authors = ["AgentMesh Hackathon Team"]
+
+[[bin]]
+name = "agentmesh"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+anyhow = "1"
+
+# Env var loading
+dotenv = "0.15"
+
+# Hex encoding
+hex = "0.4"
+
+# Alloy — modern Ethereum library (replaces ethers)
+# signer-keystore: enables PrivateKeySigner::decrypt_keystore
+alloy = { version = "1.7.3", features = ["full", "signer-keystore"] }
+
+# Pretty terminal output
+colored = "2"
+
+# Secure password prompt for keystore decryption
+rpassword = "7"

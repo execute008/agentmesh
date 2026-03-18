@@ -110,7 +110,46 @@ contract AgentRegistry is IAgentRegistry {
     // ============================================================
     //                   ESCROW & SETTLEMENT
     // ============================================================
-    function createTask(uint256, address) external payable { revert("not implemented"); }
-    function completeTask(uint256) external { revert("not implemented"); }
-    function releasePayment(uint256, address) external { revert("not implemented"); }
+    function createTask(uint256 taskId, address executorAddr) external payable {
+        require(msg.value > 0, "Must send ETH");
+        require(_isRegistered[executorAddr], "Executor not registered");
+        require(_tasks[taskId].requester == address(0), "Task already exists");
+        _tasks[taskId] = Task({
+            requester: msg.sender,
+            executor: executorAddr,
+            escrowAmount: msg.value,
+            completed: false,
+            released: false
+        });
+        emit TaskCreated(taskId, msg.sender, executorAddr, msg.value);
+    }
+
+    function completeTask(uint256 taskId) external {
+        Task storage task = _tasks[taskId];
+        require(msg.sender == task.executor, "Only executor");
+        require(!task.completed, "Already completed");
+        task.completed = true;
+        emit TaskCompleted(taskId);
+    }
+
+    function releasePayment(uint256 taskId, address requester) external {
+        require(requester == msg.sender, "Only requester");
+        Task storage task = _tasks[taskId];
+        require(task.requester == msg.sender, "Only requester");
+        require(task.completed, "Task not completed");
+        require(!task.released, "Already released");
+        task.released = true;
+        uint256 amount = task.escrowAmount;
+
+        Agent storage executor = _agents[task.executor];
+        uint8 newRep = executor.reputation + 5;
+        if (newRep > 100) newRep = 100;
+        executor.reputation = newRep;
+
+        (bool success, ) = payable(task.executor).call{value: amount}("");
+        require(success, "Transfer failed");
+
+        emit PaymentReleased(taskId, amount);
+        emit ReputationUpdated(task.executor, newRep);
+    }
 }

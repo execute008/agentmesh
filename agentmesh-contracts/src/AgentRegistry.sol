@@ -37,6 +37,12 @@ contract AgentRegistry is IAgentRegistry {
     // ============================================================
     //                       REGISTRY
     // ============================================================
+    /// @notice Register a new agent in this mesh
+    /// @dev Sets reputation to 50 and active to true. Reverts if wallet already registered.
+    /// @param agentId Unique string identifier for the agent
+    /// @param capabilities Array of capability tags the agent advertises (e.g. "web-scraping")
+    /// @param pricePerTask Agent's advertised price per task in wei
+    /// @param wsEndpoint Public WebSocket URL where agent receives x402 messages (wss://...)
     function registerAgent(
         string calldata agentId,
         string[] calldata capabilities,
@@ -57,15 +63,25 @@ contract AgentRegistry is IAgentRegistry {
         emit AgentRegistered(msg.sender, agentId, capabilities);
     }
 
+    /// @notice Get the full Agent struct for a registered wallet
+    /// @dev Reverts if wallet is not registered.
+    /// @param wallet The agent's wallet address
+    /// @return The Agent struct with all fields including endpoint and reputation
     function getAgent(address wallet) external view returns (Agent memory) {
         require(_isRegistered[wallet], "Agent not found");
         return _agents[wallet];
     }
 
+    /// @notice Get all registered agent wallet addresses in this mesh
+    /// @return Array of all wallet addresses that have called registerAgent
     function getAllAgents() external view returns (address[] memory) {
         return _agentList;
     }
 
+    /// @notice Search for agents by capability tag
+    /// @dev O(agents x capabilities) — suitable for meshes with fewer than 1000 agents
+    /// @param cap Exact capability string to search for (e.g. "web-scraping")
+    /// @return Array of wallet addresses whose capabilities include the given string
     function searchByCapability(string calldata cap) external view returns (address[] memory) {
         uint256 count = 0;
         for (uint256 i = 0; i < _agentList.length; i++) {

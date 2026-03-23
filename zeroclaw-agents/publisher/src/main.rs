@@ -6,6 +6,8 @@
 //!
 //! Environment variables:
 //!   PUBLISHER_PRIVATE_KEY  – hex private key (for address derivation + future signing)
+//!   RPC_URL                – Ethereum JSON-RPC endpoint
+//!   REGISTRY_ADDRESS       – deployed AgentRegistry contract address
 //!   PUBLISHER_PORT         – WebSocket port (default: 8082)
 
 use std::net::SocketAddr;
@@ -23,6 +25,7 @@ use axum::{
 use futures_util::StreamExt;
 use shared::{
     crypto::{address_of, signer_from_hex, verify_signature},
+    registry::register_agent,
     types::{X402Message, X402MessageType},
 };
 use tracing::{error, info, warn};
@@ -44,6 +47,10 @@ async fn main() -> Result<()> {
 
     let private_key = std::env::var("PUBLISHER_PRIVATE_KEY")
         .expect("PUBLISHER_PRIVATE_KEY must be set");
+    let rpc_url = std::env::var("RPC_URL")
+        .unwrap_or_else(|_| "https://ethereum-sepolia-rpc.publicnode.com".to_string());
+    let registry_address = std::env::var("REGISTRY_ADDRESS")
+        .unwrap_or_else(|_| "0x0000000000000000000000000000000000000000".to_string());
     let port: u16 = std::env::var("PUBLISHER_PORT")
         .unwrap_or_else(|_| "8082".to_string())
         .parse()
@@ -53,8 +60,22 @@ async fn main() -> Result<()> {
     let my_address = address_of(&signer);
 
     info!("📢 Publisher agent starting");
-    info!("   address : {my_address}");
-    info!("   port    : {port}");
+    info!("   address  : {my_address}");
+    info!("   registry : {registry_address}");
+    info!("   port     : {port}");
+
+    // Auto-register on startup
+    let endpoint = format!("ws://localhost:{port}");
+    register_agent(
+        &rpc_url,
+        &registry_address,
+        &private_key,
+        "publisher-001",
+        vec!["notification".to_string()],
+        alloy::primitives::U256::from(0u64), // Free notifications
+        &endpoint,
+    )
+    .await?;
 
     let state = AppState { my_address };
 

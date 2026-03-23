@@ -28,6 +28,7 @@ use axum::{
 use futures_util::StreamExt;
 use shared::{
     crypto::{address_of, sign_message, signer_from_hex, verify_signature},
+    registry::register_agent,
     types::{
         TaskCompletePayload, TaskRequestPayload, X402Message, X402MessageType,
     },
@@ -71,10 +72,23 @@ async fn main() -> Result<()> {
     info!("   registry : {registry_address}");
     info!("   port     : {port}");
 
+    // Auto-register on startup
+    let endpoint = format!("ws://localhost:{port}");
+    register_agent(
+        &rpc_url,
+        &registry_address,
+        &private_key,
+        "scraper-001",
+        vec!["web-scraping".to_string()],
+        alloy::primitives::U256::from(1_000_000_000_000_000u64), // 0.001 ETH
+        &endpoint,
+    )
+    .await?;
+
     let state = AppState {
-        private_key,
-        rpc_url,
-        registry_address,
+        private_key: private_key.clone(),
+        rpc_url: rpc_url.clone(),
+        registry_address: registry_address.clone(),
         my_address,
     };
 
@@ -187,6 +201,46 @@ async fn process_message(
     // This works when the analyzer initiated the WS (it's still open).
     let json = reply.to_json()?;
     socket.send(Message::Text(json.clone().into())).await?;
+
+    // Call completeTask on-chain (executor role)
+    settle_task_on_chain(state, payload.task_id).await?;
+
+    Ok(())
+}
+
+/// Settle task on-chain by calling completeTask (executor role)
+async fn settle_task_on_chain(state: &AppState, task_id: u64) -> Result<()> {
+    use alloy::{
+        network::EthereumWallet,
+        primitives::{Address, U256},
+        providers::{Provider, ProviderBuilder},
+    };
+    use shared::registry::AgentRegistryWriter;
+
+    info!("⛓️  Calling completeTask({task_id}) on-chain...");
+
+    let signer = signer_from_hex(&state.private_key)?;
+    let wallet = EthereumWallet::from(signer);
+
+    let rpc_url: url::Url = state.rpc_url.parse()?;
+    let provider = ProviderBuilder::new()
+        .wallet(wallet)
+        .connect_http(rpc_url);
+
+    let registry_addr: Address = state.registry_address.parse()?;
+    let contract = AgentRegistryWriter::new(registry_addr, &provider);
+
+    let task_id_u256 = U256::from(task_id);
+
+    match contract.completeTask(task_id_u256).send().await {
+        Ok(pending) => {
+            let tx_hash = *pending.tx_hash();
+            info!("✅ completeTask submitted: {tx_hash:?}");
+        }
+        Err(e) => {
+            warn!("completeTask failed: {e}");
+        }
+    }
 
     Ok(())
 }

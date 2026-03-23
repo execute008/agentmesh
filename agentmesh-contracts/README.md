@@ -47,8 +47,34 @@ $ anvil
 
 ### Deploy
 
+Deploy a new `AgentRegistry` mesh to Sepolia (or any EVM chain):
+
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+# 1. Set up RPC (free, no key required)
+export SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+
+# 2. Create & store deployer key (encrypted keystore, prompted once)
+cast wallet import deployer --interactive
+
+# 3. Fund the deployer address with testnet ETH from a faucet:
+#    - https://www.alchemy.com/faucets/ethereum-sepolia
+#    - https://cloud.google.com/application/web3/faucet/ethereum/sepolia
+
+# 4. Deploy (MESH_NAME is required)
+$ MESH_NAME=AgentMesh-Demo forge script script/Deploy.s.sol:Deploy \
+    --rpc-url $SEPOLIA_RPC_URL \
+    --account deployer \
+    --broadcast
+```
+
+Deployment metadata is written to `meshes.json`.
+
+#### Verify on Etherscan
+
+```shell
+$ forge verify-contract <deployed_address> src/AgentRegistry.sol:AgentRegistry \
+    --chain sepolia \
+    --etherscan-api-key $ETHERSCAN_API_KEY
 ```
 
 ### Cast

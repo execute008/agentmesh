@@ -1,0 +1,16 @@
+# Publisher Agent ZeroClaw Config
+
+[agent]
+name = "publisher-001"
+workspace = "~/synthhack/agentmesh/zeroclaw-workspaces/publisher"
+
+[gateway]
+port = 8082
+host = "127.0.0.1"
+
+[provider]
+default = "anthropic"
+# Will use env ANTHROPIC_API_KEY
+
+[autonomy]
+level = "Full"  # Fully autonomous

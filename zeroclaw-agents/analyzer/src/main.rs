@@ -40,7 +40,7 @@ use futures_util::StreamExt;
 use serde_json::json;
 use shared::{
     crypto::{address_of, sign_message, signer_from_hex, verify_signature},
-    registry::find_agents_by_capability,
+    registry::{find_agents_by_capability, register_agent},
     transport::{send_and_receive, send_to_agent},
     types::{
         TaskCompletePayload, TaskRequestPayload, X402Message, X402MessageType,
@@ -128,6 +128,19 @@ async fn main() -> Result<()> {
     info!("   publisher : {publisher_address}");
     info!("   target    : {target_url}");
     info!("   port      : {port}");
+
+    // Auto-register on startup
+    let endpoint = format!("ws://localhost:{port}");
+    register_agent(
+        &rpc_url,
+        &registry_address,
+        &private_key,
+        "analyzer-001",
+        vec!["orchestration".to_string()],
+        alloy::primitives::U256::from(0u64), // Free orchestration
+        &endpoint,
+    )
+    .await?;
 
     let state = AppState {
         private_key: private_key.clone(),
@@ -370,24 +383,8 @@ async fn settle_on_chain(state: &AppState, task_id: u64, scraper_wallet: &str) -
 
     let contract = AgentRegistryWriter::new(registry_addr, &provider);
 
-    // completeTask — called by the executor (us, acting on behalf of the scraper
-    // in this demo since both share the same registry). In a real deployment
-    // this would be called by the scraper agent's own wallet.
-    // Here the analyzer calls it after receiving the TaskComplete x402 message
-    // as proof-of-work from the scraper.
+    // Skip completeTask - the scraper will call it from their wallet
     let task_id_u256 = U256::from(task_id);
-
-    match contract.completeTask(task_id_u256).send().await {
-        Ok(pending) => {
-            let tx_hash = *pending.tx_hash();
-            // Wait for receipt in background to avoid blocking
-            info!("✅ completeTask submitted: {tx_hash:?}");
-            drop(pending);
-        }
-        Err(e) => {
-            warn!("completeTask failed (task may not exist on-chain in dev): {e}");
-        }
-    }
 
     // releasePayment — called by the requester (analyzer's wallet)
     let my_addr: Address = state

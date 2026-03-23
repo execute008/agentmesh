@@ -15,5 +15,5 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 hex = { workspace = true }
 uuid = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 url = "2"

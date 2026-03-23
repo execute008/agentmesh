@@ -4,18 +4,33 @@
 //! without importing the full CLI codebase.
 
 use alloy::{
-    primitives::Address,
+    network::EthereumWallet,
+    primitives::{Address, U256},
     providers::ProviderBuilder,
+    signers::local::PrivateKeySigner,
     sol,
 };
 use anyhow::{Context, Result};
+use crate::crypto::signer_from_hex;
 
-// Minimal inline ABI — only the read functions we need here.
+// Minimal inline ABI — read + write functions
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
     AgentRegistry,
     r#"[
+      {
+        "type": "function",
+        "name": "registerAgent",
+        "inputs": [
+          { "name": "agentId", "type": "string", "internalType": "string" },
+          { "name": "capabilities", "type": "string[]", "internalType": "string[]" },
+          { "name": "pricePerTask", "type": "uint256", "internalType": "uint256" },
+          { "name": "endpoint", "type": "string", "internalType": "string" }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
       {
         "type": "function",
         "name": "getAgent",
@@ -142,4 +157,60 @@ pub async fn get_agent(
         reputation: agent.reputation,
         active: agent.active,
     })
+}
+
+/// Register this agent on-chain.
+///
+/// Returns Ok(true) if registration succeeded, Ok(false) if already registered.
+pub async fn register_agent(
+    rpc_url: &str,
+    registry_address: &str,
+    private_key: &str,
+    agent_id: &str,
+    capabilities: Vec<String>,
+    price_per_task: U256,
+    endpoint: &str,
+) -> Result<bool> {
+    let signer: PrivateKeySigner = signer_from_hex(private_key)?;
+    let my_address = crate::crypto::address_of(&signer);
+    
+    // Check if already registered
+    let my_addr: Address = my_address.parse()?;
+    match get_agent(rpc_url, registry_address, my_addr).await {
+        Ok(existing) if existing.active => {
+            tracing::info!("Already registered as {}", existing.agent_id);
+            return Ok(false);
+        }
+        _ => {}
+    }
+
+    let wallet = EthereumWallet::from(signer);
+    let url: url::Url = rpc_url.parse().context("parsing RPC URL")?;
+    let provider = ProviderBuilder::new()
+        .wallet(wallet)
+        .connect_http(url);
+
+    let addr: Address = registry_address
+        .parse()
+        .context("parsing registry address")?;
+
+    let contract = AgentRegistry::new(addr, &provider);
+
+    tracing::info!("📝 Registering agent {} on-chain...", agent_id);
+    
+    let tx = contract
+        .registerAgent(
+            agent_id.to_string(),
+            capabilities,
+            price_per_task,
+            endpoint.to_string(),
+        )
+        .send()
+        .await
+        .context("registerAgent transaction")?;
+
+    let receipt = tx.get_receipt().await.context("waiting for receipt")?;
+    
+    tracing::info!("✅ Registered! Tx: {:?}", receipt.transaction_hash);
+    Ok(true)
 }

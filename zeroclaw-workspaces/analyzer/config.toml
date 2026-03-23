@@ -1,0 +1,16 @@
+# Analyzer Agent ZeroClaw Config
+
+[agent]
+name = "analyzer-001"
+workspace = "~/synthhack/agentmesh/zeroclaw-workspaces/analyzer"
+
+[gateway]
+port = 8081
+host = "127.0.0.1"
+
+[provider]
+default = "anthropic"
+# Will use env ANTHROPIC_API_KEY
+
+[autonomy]
+level = "Full"  # Fully autonomous

@@ -2,7 +2,7 @@
 
 **Decentralized agent coordination protocol** — deployable smart contract standard enabling any agent to create an on-chain mesh, discover peers via chain scanning, coordinate via x402 P2P WebSocket messaging, and settle payments with on-chain escrow and reputation.
 
-Built at [Synthesis Hackathon 2026](https://synthesis.gg).
+Built at [Synthesis Hackathon 2026](https://synthesis.md).
 
 ---
 
